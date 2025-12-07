@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
@@ -11,10 +11,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
-  // Form state
   const [formData, setFormData] = useState({
     origin_city: '',
     origin_state: '',
@@ -89,6 +90,64 @@ export default function Dashboard() {
     setFormLoading(false)
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setExtracting(true)
+    setShowForm(true)
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          // Remove the data:image/...;base64, prefix
+          const base64Data = result.split(',')[1]
+          resolve(base64Data)
+        }
+        reader.readAsDataURL(file)
+      })
+
+      // Send to extraction API
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType: file.type,
+        }),
+      })
+
+      const extracted = await response.json()
+
+      if (extracted.error) {
+        alert('Extraction failed: ' + extracted.error)
+      } else {
+        // Auto-fill the form with extracted data
+        setFormData({
+          origin_city: extracted.origin_city || '',
+          origin_state: extracted.origin_state || '',
+          destination_city: extracted.destination_city || '',
+          destination_state: extracted.destination_state || '',
+          shipper_name: extracted.shipper_name || '',
+          consignee_name: extracted.consignee_name || '',
+          weight: extracted.weight?.toString() || '',
+        })
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to process document')
+    }
+
+    setExtracting(false)
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -116,16 +175,34 @@ export default function Dashboard() {
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Your Shipments</h2>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm"
-            >
-              {showForm ? 'Cancel' : '+ New Shipment'}
-            </button>
+            <div className="flex gap-2">
+              <label className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm cursor-pointer">
+                {extracting ? 'Extracting...' : '📄 Upload Document'}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={extracting}
+                />
+              </label>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm"
+              >
+                {showForm ? 'Cancel' : '+ New Shipment'}
+              </button>
+            </div>
           </div>
 
           {showForm && (
             <form onSubmit={handleSubmit} className="bg-gray-700 p-4 rounded-lg mb-6">
+              {extracting && (
+                <div className="mb-4 p-3 bg-purple-900 rounded text-center">
+                  <p>🔍 AI is reading your document...</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Origin City</label>
@@ -199,7 +276,7 @@ export default function Dashboard() {
               </div>
               <button
                 type="submit"
-                disabled={formLoading}
+                disabled={formLoading || extracting}
                 className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
               >
                 {formLoading ? 'Creating...' : 'Create Shipment'}
