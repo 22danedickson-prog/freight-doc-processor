@@ -3,7 +3,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY || (() => {
+    throw new Error('ANTHROPIC_API_KEY environment variable is not set')
+  })(),
 })
 
 // Create Supabase client with service role for server-side operations
