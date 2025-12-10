@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import ChatWidget from '@/components/ChatWidget'
 
+export const dynamic = 'force-dynamic'
+
 type StatusFilter = 'all' | 'pending' | 'in_transit' | 'delivered' | 'cancelled'
 type SortField = 'created_at' | 'origin_city' | 'destination_city' | 'weight' | 'status'
 type SortDirection = 'asc' | 'desc'

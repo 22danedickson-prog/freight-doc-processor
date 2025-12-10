@@ -7,6 +7,8 @@ import { User } from '@supabase/supabase-js'
 import ChatWidget from '@/components/ChatWidget'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
+export const dynamic = 'force-dynamic'
+
 const STATUS_COLORS: Record<string, string> = {
   pending: '#f59e0b',
   in_transit: '#3b82f6',
