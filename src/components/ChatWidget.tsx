@@ -13,7 +13,7 @@ interface ChatWidgetProps {
 }
 
 export default function ChatWidget({ userId, onShipmentChange }: ChatWidgetProps) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
